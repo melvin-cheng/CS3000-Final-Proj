@@ -64,3 +64,14 @@ def allocate(M, cap, A, avail, mand, need):
             seats[meetings.index(m)] -= 1
  
     return assign, roster
+
+def seat_reward(already_have, extra_meetings, seat_weight):
+    """
+    total worth of giving a person `extra_meetings` more metings when they already
+    hold `already_have`. Adds up the per seat weights for the new seats which get
+    smaller as a person collects more
+    """
+    total = 0
+    for rank in range(already_have + 1, already_have + extra_meetings + 1):
+        total += seat_weight[rank - 1]
+    return total
