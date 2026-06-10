@@ -28,69 +28,39 @@ def allocate(M, cap, A, avail, mand, need):
             assign[a].add(m)
             roster[m].add(a)
 
-    # 2. place everyone else, handling the most-constrained attendees first
-    # (those with the fewest available meetings)
-    sorted_attendees = sorted(
-        A,
-        key=lambda a: len(avail[a] - mand[a])
-    )
+    seats_left = {m: cap[m] - len(roster[m]) for m in M}
 
-    # 3. Process attendees one at a time in order of availiability.
-    for a in sorted_attendees:
-      if len(assign[a]) >= need[a]:
-            continue
-      for m in avail[a]:
-          if m in assign[a]:
-                continue
-          if len(roster[m]) < cap[m]:
-                assign[a].add(m)
-                roster[m].add(a)
-          else:
-                # Attempt to find a removable attendee.
-                victim = displace(
-                    m,
-                    roster,
-                    assign,
-                    mand,
-                    need
-                )
-                if victim is not None:
-                    roster[m].remove(victim)
-                    assign[victim].remove(m)
+    """
+    How much each seat is worth: a person's 1st meeting is worth far more than their 
+    2nd, the 2nd more than the 3rd, and so on. Using a base bigger than the
+    number of attendees makes "cover one more person" always outweigh 
+    "give someone an extra meeting", so coverage wins first and depth second.
+    """
+    base = len(A) + 1
+    need_max = max(need(a) for a in A)
+    seat_weight = [base ** (need_max - rank) for rank in range(1, need_max + 1)]
 
-                    roster[m].add(a)
-                    assign[a].add(m)
-          if len(assign[a]) >= need[a]:
-                break
+     # describe each person and how many people they have
+    people = []
+    for a in A:
+        already_assigned = len(mand[a])
+        room = max(0, need[a] - already_assigned)  # how many more meetings a needs to be satisfied
+        options = sorted(avail[a] - mand[a]) # meetings a can still be assigned to
+        people.append((a, already_assigned, room, options))
+
+    meetings = sorted(M)
+    seats_tuple = tuple(seats_left[m] for m in meetings)
+    hold = {}
+    choice = {}
+    best_score(0, seats_tuple, people, meetings, seat_weight, hold, choice)
+ 
+    # 3. replay the recorded best choices to build the actual assignment
+    seats = list(seats_tuple)
+    for i in range(len(people)):
+        attendee = people[i][0]
+        for m in choice[(i, tuple(seats))]:
+            assign[attendee].add(m)
+            roster[m].add(attendee)
+            seats[meetings.index(m)] -= 1
+ 
     return assign, roster
-
-
-def displace(m, roster, assign, mand, need):
-    """
-    Attempts to find someone who can safely lose meeting m.
-
-    Returns:
-        victim attendee
-        OR
-        None if nobody can be safely removed
-    """
-    candidates = []
-    for b in roster[m]:
-        # Never remove someone from a mandatory assignment.
-        # If meeting m is mandatory for attendee b they are not allowed to be removed.
-        if m in mand[b]:
-            continue
-
-        # Only remove attendee b if they would still satisfy their minimum meeting requirement afterward.
-        if len(assign[b]) - 1 >= need[b]:
-            candidates.append(b)
-
-    if len(candidates) == 0:
-        return None
-
-    # Choose the attendee with the most flexibility
-    victim = max(
-        candidates,
-        key=lambda b: len(assign[b])
-    )
-    return victim
