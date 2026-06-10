@@ -75,3 +75,45 @@ def seat_reward(already_have, extra_meetings, seat_weight):
     for rank in range(already_have + 1, already_have + extra_meetings + 1):
         total += seat_weight[rank - 1]
     return total
+
+def best_score(i, seats, people, meetings, seat_weight, hold, choice):
+    """
+    Largest total score possible from person i onward given the open seats
+    Fills hold[...] and choice[...] along the way.
+
+    Returns:
+        the score for this situation
+    """
+    # no ppl left to place
+    if i == len(people):
+        return 0
+
+    state = (i, seats)
+    if state in hold:          # already solved
+        return hold[state]
+
+    attendee, already_have, room, options = people[i]
+
+    # give this person no extra meetings
+    best = best_score(i + 1, seats, people, meetings, seat_weight, hold, choice)
+    best_meetings = ()
+
+    # give them 1..room extra meetings trying each set of open meetings
+    for extra_meetings in range(1, min(room, len(options)) + 1):
+        gain = seat_reward(already_have, extra_meetings, seat_weight)
+        for chosen in combinations(options, extra_meetings):
+            # the chosen meetings must all still have a seat free
+            if all(seats[meetings.index(m)] > 0 for m in chosen):
+                # use one seat in each chosen meeting then solve everyone after
+                remaining = list(seats)
+                for m in chosen:
+                    remaining[meetings.index(m)] -= 1
+                score = gain + best_score(i + 1, tuple(remaining), people, 
+                                          meetings, seat_weight, hold, choice)
+                if score > best:
+                    best = score
+                    best_meetings = chosen
+
+    hold[state] = best
+    choice[state] = best_meetings
+    return best
