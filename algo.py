@@ -30,7 +30,39 @@ def allocate(M, cap, A, avail, mand, need):
 
     # 2. place everyone else, handling the most-constrained attendees first
     # (those with the fewest available meetings)
-    
+    sorted_attendees = sorted(
+        A,
+        key=lambda a: len(avail[a] - mand[a])
+    )
+
+    # 3. Process attendees one at a time in order of availiability.
+    for a in sorted_attendees:
+      if len(assign[a]) >= need[a]:
+            continue
+      for m in avail[a]:
+          if m in assign[a]:
+                continue
+          if len(roster[m]) < cap[m]:
+                assign[a].add(m)
+                roster[m].add(a)
+          else:
+                # Attempt to find a removable attendee.
+                victim = displace(
+                    m,
+                    roster,
+                    assign,
+                    mand,
+                    need
+                )
+                if victim is not None:
+                    roster[m].remove(victim)
+                    assign[victim].remove(m)
+
+                    roster[m].add(a)
+                    assign[a].add(m)
+          if len(assign[a]) >= need[a]:
+                break
+    return assign, roster
 
 
     
