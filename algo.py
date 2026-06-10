@@ -65,4 +65,32 @@ def allocate(M, cap, A, avail, mand, need):
     return assign, roster
 
 
-    
+def displace(m, roster, assign, mand, need):
+    """
+    Attempts to find someone who can safely lose meeting m.
+
+    Returns:
+        victim attendee
+        OR
+        None if nobody can be safely removed
+    """
+    candidates = []
+    for b in roster[m]:
+        # Never remove someone from a mandatory assignment.
+        # If meeting m is mandatory for attendee b they are not allowed to be removed.
+        if m in mand[b]:
+            continue
+
+        # Only remove attendee b if they would still satisfy their minimum meeting requirement afterward.
+        if len(assign[b]) - 1 >= need[b]:
+            candidates.append(b)
+
+    if len(candidates) == 0:
+        return None
+
+    # Choose the attendee with the most flexibility
+    victim = max(
+        candidates,
+        key=lambda b: len(assign[b])
+    )
+    return victim
